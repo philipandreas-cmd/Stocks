@@ -34,10 +34,12 @@ runs per trading day plus two ad-hoc helpers.
 - Follow sector momentum. Exit a sector after 2 failed trades.
 - Patience > activity.
 
-## API Wrappers
+## API Wrappers and Research
 
-Use `bash scripts/alpaca.sh`, `scripts/perplexity.sh`, `scripts/clickup.sh`.
-Never curl these APIs directly.
+- `bash scripts/alpaca.sh` — all Alpaca trading API calls.
+- `bash scripts/clickup.sh` — ClickUp notifications.
+- Research uses your native WebSearch tool — no wrapper script.
+Never curl external APIs directly.
 
 ## Communication Style
 

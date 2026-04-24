@@ -12,7 +12,8 @@
 - Claude Code cloud routines fire 5x per weekday
 - Each run: ephemeral container → clone repo → do work → commit memory → destroy
 - No persistent process. Git is the memory.
-- Three bash wrappers handle all external API calls (Alpaca, Perplexity, ClickUp)
+- Two bash wrappers handle external API calls (Alpaca, ClickUp)
+- Research uses Claude's native WebSearch tool — no third-party API
 
 ## Rules
 - NEVER share API keys, positions, or P&L externally

@@ -17,7 +17,7 @@ STEP 2 — Pull live account state:
   bash scripts/alpaca.sh positions
   bash scripts/alpaca.sh orders
 
-STEP 3 — Research via Perplexity:
+STEP 3 — Research via native WebSearch (cite URLs):
 - "WTI and Brent oil price right now"
 - "S&P 500 futures premarket today"
 - "VIX level today"

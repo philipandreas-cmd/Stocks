@@ -11,7 +11,8 @@ Five cron jobs fire each weekday. Each spins up a fresh Claude Code cloud contai
 4. Commits any memory updates back to `main`
 5. Sends a ClickUp notification (per workflow rules)
 
-**Claude is the bot.** No separate Python process.
+**Claude is the bot.** No separate Python process. Research runs through
+Claude's native WebSearch tool — no third-party research API required.
 
 ## Quick Start
 
@@ -65,6 +66,5 @@ All state lives in `memory/` — committed to `main` after every run.
 
 - GitHub account
 - Alpaca brokerage account (paper to start)
-- Perplexity API account
 - ClickUp account (chat channel for notifications)
 - Claude Code with cloud routines access

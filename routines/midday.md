@@ -7,8 +7,7 @@ DATE=$(date +%Y-%m-%d).
 IMPORTANT — ENVIRONMENT VARIABLES:
 - Every API key is ALREADY exported as a process env var: ALPACA_API_KEY,
   ALPACA_SECRET_KEY, ALPACA_ENDPOINT, ALPACA_DATA_ENDPOINT,
-  PERPLEXITY_API_KEY, PERPLEXITY_MODEL, CLICKUP_API_KEY,
-  CLICKUP_WORKSPACE_ID, CLICKUP_CHANNEL_ID.
+  CLICKUP_API_KEY, CLICKUP_WORKSPACE_ID, CLICKUP_CHANNEL_ID.
 - There is NO .env file in this repo and you MUST NOT create, write, or
   source one.
 - If a wrapper prints "KEY not set in environment" -> STOP, send one
@@ -16,7 +15,7 @@ IMPORTANT — ENVIRONMENT VARIABLES:
 - Verify env vars BEFORE any wrapper call:
   for v in ALPACA_API_KEY ALPACA_SECRET_KEY CLICKUP_API_KEY \
             CLICKUP_WORKSPACE_ID CLICKUP_CHANNEL_ID; do
-    [[ -n "${!v:-}" ]] && echo "$v: set" || echo "$v: MISSING"
+    [[ -n "${\!v:-}" ]] && echo "$v: set" || echo "$v: MISSING"
   done
 
 IMPORTANT — PERSISTENCE:
@@ -48,10 +47,9 @@ STEP 5 — Thesis check. If a thesis broke intraday (catalyst invalidated,
 sector rolling over, news event), cut the position even if not at -7% yet.
 Document reasoning in TRADE-LOG.
 
-STEP 6 — Optional intraday research via Perplexity if something is moving
-sharply with no obvious cause:
-  bash scripts/perplexity.sh "<ticker> stock news today"
-  Append afternoon addendum to RESEARCH-LOG if notable.
+STEP 6 — Optional intraday research via native WebSearch if something is
+moving sharply with no obvious cause. Query: "<ticker> stock news today".
+Cite the URL. Append afternoon addendum to RESEARCH-LOG if notable.
 
 STEP 7 — Notification: only if action was taken.
   bash scripts/clickup.sh "<action summary>"

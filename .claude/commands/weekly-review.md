@@ -17,7 +17,7 @@ STEP 2 — Pull week-end state:
   bash scripts/alpaca.sh account
   bash scripts/alpaca.sh positions
 
-STEP 3 — Compute week metrics (including S&P 500 via Perplexity).
+STEP 3 — Compute week metrics (including S&P 500 via native WebSearch).
 
 STEP 4 — Append full review section to memory/WEEKLY-REVIEW.md
 (stats table, closed trades, open positions, what worked, what didn't,

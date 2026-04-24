@@ -20,9 +20,13 @@ The env-var check block and commit-and-push step are load-bearing.
    - `ALPACA_SECRET_KEY`
    - `ALPACA_ENDPOINT` (optional)
    - `ALPACA_DATA_ENDPOINT` (optional)
-   - `PERPLEXITY_API_KEY`
-   - `PERPLEXITY_MODEL` (optional, defaults to `sonar`)
    - `CLICKUP_API_KEY`
    - `CLICKUP_WORKSPACE_ID`
    - `CLICKUP_CHANNEL_ID`
 4. Hit **Run now** after each routine to test before waiting for the cron
+
+## Research
+
+Research uses Claude's native WebSearch tool — no separate API key required.
+The pre-market, midday, and weekly-review routines issue WebSearch queries
+directly. Always cite source URLs in RESEARCH-LOG.md.

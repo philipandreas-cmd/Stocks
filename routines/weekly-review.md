@@ -7,16 +7,15 @@ DATE=$(date +%Y-%m-%d).
 IMPORTANT — ENVIRONMENT VARIABLES:
 - Every API key is ALREADY exported as a process env var: ALPACA_API_KEY,
   ALPACA_SECRET_KEY, ALPACA_ENDPOINT, ALPACA_DATA_ENDPOINT,
-  PERPLEXITY_API_KEY, PERPLEXITY_MODEL, CLICKUP_API_KEY,
-  CLICKUP_WORKSPACE_ID, CLICKUP_CHANNEL_ID.
+  CLICKUP_API_KEY, CLICKUP_WORKSPACE_ID, CLICKUP_CHANNEL_ID.
 - There is NO .env file in this repo and you MUST NOT create, write, or
   source one.
 - If a wrapper prints "KEY not set in environment" -> STOP, send one
   ClickUp alert naming the missing var, and exit.
 - Verify env vars BEFORE any wrapper call:
-  for v in ALPACA_API_KEY ALPACA_SECRET_KEY PERPLEXITY_API_KEY \
+  for v in ALPACA_API_KEY ALPACA_SECRET_KEY \
             CLICKUP_API_KEY CLICKUP_WORKSPACE_ID CLICKUP_CHANNEL_ID; do
-    [[ -n "${!v:-}" ]] && echo "$v: set" || echo "$v: MISSING"
+    [[ -n "${\!v:-}" ]] && echo "$v: set" || echo "$v: MISSING"
   done
 
 IMPORTANT — PERSISTENCE:
@@ -37,8 +36,9 @@ STEP 3 — Compute the week's metrics:
 - Starting portfolio (Monday AM equity from TRADE-LOG EOD snapshots)
 - Ending portfolio (today's equity from account call)
 - Week return ($ and %)
-- S&P 500 week return:
-    bash scripts/perplexity.sh "S&P 500 weekly performance week ending $DATE"
+- S&P 500 week return via native WebSearch:
+    query: "S&P 500 weekly performance week ending $DATE"
+    cite source URL in the review
 - Trades taken (W/L/open counts)
 - Win rate (closed trades only)
 - Best trade, worst trade

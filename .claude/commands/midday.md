@@ -25,6 +25,6 @@ Never within 3% of current price. Never move a stop down.
 
 STEP 5 — Thesis check: cut if thesis broke even if not at -7%.
 
-STEP 6 — Optional Perplexity research if something moving sharply unexplained.
+STEP 6 — Optional WebSearch research if something moving sharply unexplained.
 
 STEP 7 — Notify via ClickUp only if action was taken.
