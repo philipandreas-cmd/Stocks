@@ -35,11 +35,6 @@ IMPORTANT — ENVIRONMENT VARIABLES:
   source one.
 - If a wrapper prints "KEY not set in environment" -> STOP, send one
   ClickUp alert naming the missing var, and exit.
-- Verify env vars BEFORE any wrapper call:
-  for v in ALPACA_API_KEY ALPACA_SECRET_KEY \
-            CLICKUP_API_KEY CLICKUP_WORKSPACE_ID CLICKUP_CHANNEL_ID; do
-    [[ -n "${\!v:-}" ]] && echo "$v: set" || echo "$v: MISSING"
-  done
 
 IMPORTANT — PERSISTENCE:
 - Fresh clone. File changes VANISH unless committed and pushed.
