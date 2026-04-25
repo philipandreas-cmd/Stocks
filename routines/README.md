@@ -1,8 +1,9 @@
 # Cloud Routine Prompts
 
 Each routine is a verbatim prompt you paste into a Cowork "Routine" (Edit
-routine dialog → Instructions field). The routine clones this repo, runs
-your bash wrappers, and pushes memory updates back to `main`.
+routine dialog → Instructions field). The routine clones this repo, writes
+.env from the SETUP block at the top of the prompt, runs the bash wrappers,
+and pushes memory updates back to `main`.
 
 | File | Cron (America/Chicago) | Description |
 |------|----------------------|-------------|
@@ -16,12 +17,12 @@ your bash wrappers, and pushes memory updates back to `main`.
 
 1. **Name** — match the filename (e.g. `pre-market`).
 2. **Instructions** — paste the file's full contents, then replace the
-   `<...>` placeholders in the SETUP block at the top with your real keys
-   from `.env`. The keys live ONLY in this routine prompt; never commit
-   them to the repo.
+   `<...>` placeholders in the SETUP block at the top with your real
+   credentials. The bot writes a `.env` file from these every run; the
+   `.env` is gitignored and never committed back to the repo.
 3. **Repository** — `philipandreas-cmd/Stocks` branch `main`.
 4. **Trigger** — schedule with the cron above. If the UI lacks a Chicago
-   timezone, use 13:00 CEST (summer) / 13:00 CET (winter) for pre-market;
+   timezone, use 13:00 CEST (summer) / 12:00 CET (winter) for pre-market;
    adjust manually at DST boundaries.
 5. **Connectors** — none. The bot uses bash + curl directly.
 6. **Permissions** — toggle ON "Allow unrestricted git push".
@@ -30,9 +31,13 @@ your bash wrappers, and pushes memory updates back to `main`.
 ## Why credentials are in the prompt
 
 Cowork routines do not have a separate environment-variables panel.
-The prompt itself sets env vars via `export` before any wrapper is called.
-This is private to your Cowork account; the wrappers and `.env` file in
-the repo never see real credentials in version control.
+The prompt itself writes `.env` (which `scripts/alpaca.sh` and
+`scripts/clickup.sh` source automatically) before any wrapper call.
+This is private to your Cowork account.
+
+`export` in the prompt would NOT work — every `bash` call starts a fresh
+shell, so process-env exports don't persist across calls. Writing `.env`
+once at the start of the session is the cleanest fix.
 
 ## Research
 
