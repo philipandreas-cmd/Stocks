@@ -1,0 +1,928 @@
+<title>Equilibra Planner</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: planning workspace. Left rail = the five IBP plans + inputs; main = summary KPIs first, detail views behind the rail. */
+:root {
+  --bg: #f2f4f1; --surface: #ffffff; --surface-2: #f7f9f7;
+  --ink: #12211e; --muted: #56645f; --faint: #8a9692; --rule: #d6ddd8; --grid: #e6ebe7;
+  --accent: #0d7464; --accent-soft: #d6ebe5;
+  --over: #b47d06; --over-soft: rgba(196,138,10,.18);
+  --under: #c2412d; --under-soft: rgba(194,65,45,.16);
+  --good: #1d7a3e; --good-soft: rgba(29,122,62,.13);
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a;
+  --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1513; --surface: #16201d; --surface-2: #1b2723; --ink: #e6eeea; --muted: #9aaba5; --faint: #6f7f79; --rule: #2a3733; --grid: #22302c;
+    --accent: #3fbfa6; --accent-soft: #173a33; --over: #e0a92e; --over-soft: rgba(224,169,46,.18);
+    --under: #ef6e57; --under-soft: rgba(239,110,87,.18); --good: #4cc27a; --good-soft: rgba(76,194,122,.15);
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1513; --surface: #16201d; --surface-2: #1b2723; --ink: #e6eeea; --muted: #9aaba5; --faint: #6f7f79; --rule: #2a3733; --grid: #22302c;
+  --accent: #3fbfa6; --accent-soft: #173a33; --over: #e0a92e; --over-soft: rgba(224,169,46,.18);
+  --under: #ef6e57; --under-soft: rgba(239,110,87,.18); --good: #4cc27a; --good-soft: rgba(76,194,122,.15);
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { min-height: 100%; }
+body {
+  background: var(--bg); color: var(--ink); font: 400 15px/1.55 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 40px;
+}
+h1, h2, h3 { font-family: var(--font-display); margin: 0; line-height: 1.15; text-wrap: balance; }
+h1 { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.015em; }
+h2 { font-size: 1.15rem; font-weight: 600; }
+h3 { font-size: 1rem; font-weight: 600; }
+p { margin: 0; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.label { font: 500 .7rem/1.2 var(--font-data); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+.num, td.n, .mono { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+
+.app { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 28px; max-width: 1360px; margin: 0 auto; }
+.rail { position: sticky; top: env(safe-area-inset-top, 0px); align-self: start; padding-block: 20px; display: grid; gap: 22px; }
+.brand { display: flex; align-items: center; gap: 10px; font: 800 1.15rem var(--font-display); color: var(--ink); text-decoration: none; }
+.brand svg { width: 26px; height: 26px; flex: none; }
+.nav { display: grid; gap: 2px; }
+.nav a { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; color: var(--muted); text-decoration: none; font-weight: 500; }
+.nav a:hover { background: var(--surface); color: var(--ink); }
+.nav a[aria-current="page"] { background: var(--surface); color: var(--ink); box-shadow: inset 2px 0 0 var(--accent); }
+.nav .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.dot.ok { background: var(--good); } .dot.warn { background: var(--over); } .dot.risk { background: var(--under); } .dot.none { background: transparent; }
+.rail-foot { font-size: .8rem; color: var(--muted); display: grid; gap: 6px; }
+
+main { min-width: 0; padding-block: 20px; display: grid; gap: 20px; align-content: start; }
+.topbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; }
+.topbar .meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chip { font: 500 .72rem var(--font-data); padding: 4px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+.chip.sample { background: var(--over-soft); color: var(--over); }
+.ctrl { display: inline-flex; align-items: center; gap: 8px; font-size: .85rem; color: var(--muted); }
+.ctrl select, .ctrl input, .in {
+  background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 6px 10px; color: var(--ink); min-width: 0;
+}
+.in:focus, .ctrl select:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+.btn { display: inline-flex; align-items: center; gap: 6px; border-radius: 8px; padding: 8px 14px; border: 1px solid var(--ink); background: var(--ink); color: var(--bg); font-weight: 600; cursor: pointer; font-size: .88rem; }
+.btn.ghost { background: transparent; color: var(--ink); border-color: var(--rule); }
+.btn.small { padding: 4px 10px; font-size: .8rem; }
+.btn:hover { filter: brightness(1.1); }
+.save-status { font-size: .8rem; color: var(--muted); }
+
+.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 18px; min-width: 0; }
+.panel-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px 16px; margin-bottom: 12px; }
+.panel-head p { font-size: .88rem; }
+.grid2 { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 20px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
+.stats > div { background: var(--surface); padding: 12px 14px; display: grid; gap: 4px; min-width: 0; }
+.stats .v { font: 500 1.2rem var(--font-data); font-variant-numeric: tabular-nums; }
+.v.under { color: var(--under); } .v.over { color: var(--over); } .v.acc { color: var(--accent); }
+
+/* KPI widgets */
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.kpi { background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.kpi-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.kpi .big { font: 500 1.65rem/1.1 var(--font-data); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+.kpi .big small { font-size: .85rem; color: var(--muted); letter-spacing: 0; }
+.kpi .sub { font-size: .82rem; color: var(--muted); }
+.kpi .spark { width: 100%; height: 36px; display: block; }
+.pill { font: 600 .66rem var(--font-data); letter-spacing: .05em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; white-space: nowrap; display: inline-flex; gap: 5px; align-items: center; }
+.pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.pill.ok { color: var(--good); background: var(--good-soft); }
+.pill.warn { color: var(--over); background: var(--over-soft); }
+.pill.risk { color: var(--under); background: var(--under-soft); }
+.pill.info { color: var(--accent); background: var(--accent-soft); }
+.explain-btn { margin-top: auto; align-self: flex-start; background: none; border: 0; padding: 2px 0; color: var(--accent); font-weight: 600; font-size: .82rem; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.explain-btn svg { width: 12px; height: 12px; transition: transform .2s; }
+.explain-btn[aria-expanded="true"] svg { transform: rotate(45deg); }
+.explain { border-top: 1px dashed var(--rule); padding-top: 10px; font-size: .84rem; color: var(--muted); display: grid; gap: 8px; }
+.explain h4 { margin: 0; font: 500 .66rem var(--font-data); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+.explain .how { font: 400 .78rem/1.5 var(--font-data); background: var(--surface-2); color: var(--ink); padding: 8px 10px; border-radius: 6px; overflow-x: auto; }
+.explain .do { color: var(--ink); }
+
+/* tables */
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .86rem; }
+th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--rule); white-space: nowrap; vertical-align: middle; }
+th { font: 500 .66rem var(--font-data); letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+td.n, th.n { text-align: right; }
+tr.best td { background: var(--accent-soft); }
+tr.best td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+td .in { width: 100%; min-width: 72px; padding: 5px 8px; font-family: var(--font-data); font-size: .85rem; }
+td .in.name { min-width: 130px; font-family: var(--font-body); }
+
+/* charts */
+.chart-wrap { position: relative; }
+.chart-wrap svg { width: 100%; height: auto; display: block; overflow: visible; }
+.chart-wrap text { font: 400 11px var(--font-data); fill: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .8rem; color: var(--muted); margin-bottom: 6px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; }
+.legend i.area { height: 10px; border-radius: 2px; }
+.tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 8px 10px; font-size: .78rem; box-shadow: 0 8px 24px -12px rgba(0,0,0,.35); min-width: 150px; z-index: 5; }
+.tip .t { font: 500 .72rem var(--font-data); color: var(--muted); margin-bottom: 4px; }
+.tip .r { display: flex; justify-content: space-between; gap: 14px; }
+.tip .r span:first-child { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+.tip .r span:last-child { font-family: var(--font-data); font-variant-numeric: tabular-nums; color: var(--ink); }
+.tip i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+.note { font-size: .82rem; color: var(--muted); margin-top: 8px; }
+.stack { display: flex; height: 12px; gap: 2px; min-width: 140px; }
+.stack span { height: 100%; border-radius: 2px; }
+.stack span:first-child { border-radius: 4px 2px 2px 4px; }
+.stack span:last-child { border-radius: 2px 4px 4px 2px; }
+
+.seg { display: inline-flex; flex-wrap: wrap; gap: 4px; background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 4px; }
+.seg button { border: 0; background: none; padding: 6px 12px; border-radius: 7px; cursor: pointer; color: var(--muted); font-weight: 500; font-size: .85rem; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.banner { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 10px; font-size: .9rem; }
+.banner.ok { background: var(--good-soft); } .banner.warn { background: var(--over-soft); }
+.banner strong { display: block; }
+.form-row { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: end; }
+.field { display: grid; gap: 4px; font-size: .82rem; color: var(--muted); }
+.field .in { font-size: .95rem; }
+.drop { border: 1.5px dashed var(--rule); border-radius: 10px; padding: 16px; display: grid; gap: 8px; }
+.drop code { font: 400 .78rem var(--font-data); background: var(--surface-2); padding: 8px 10px; border-radius: 6px; display: block; white-space: pre; overflow-x: auto; }
+.msg { font-size: .85rem; padding: 8px 10px; border-radius: 8px; }
+.msg.ok { background: var(--good-soft); color: var(--good); } .msg.err { background: var(--under-soft); color: var(--under); }
+
+@media (max-width: 1180px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grid2 { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 860px) {
+  .app { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .rail { position: static; padding-block: 14px 0; gap: 12px; }
+  .nav { display: flex; overflow-x: auto; gap: 4px; padding-bottom: 4px; }
+  .nav a { white-space: nowrap; }
+  .rail-foot { display: none; }
+}
+@media (max-width: 520px) { .kpis { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 600px) { .chart-wrap text { font-size: 17px; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app">
+  <aside class="rail">
+    <a class="brand" href="#overview">
+      <svg viewBox="0 0 28 28" aria-hidden="true"><rect x="1" y="1" width="26" height="26" rx="7" fill="var(--ink)"/><path d="M5 18 C 9 18, 10 8, 14 8 S 19 18, 23 18" fill="none" stroke="var(--bg)" stroke-width="2.2" stroke-linecap="round"/><line x1="14" y1="5" x2="14" y2="23" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round"/></svg>
+      Equilibra
+    </a>
+    <nav class="nav" id="nav" aria-label="Plans">
+      <a href="#overview" data-view="overview">Overview <span class="dot none"></span></a>
+      <a href="#demand" data-view="demand">Demand <span class="dot none" id="dot-demand"></span></a>
+      <a href="#inventory" data-view="inventory">Inventory risk <span class="dot none" id="dot-inventory"></span></a>
+      <a href="#marketing" data-view="marketing">Marketing <span class="dot none" id="dot-marketing"></span></a>
+      <a href="#shipping" data-view="shipping">Shipping <span class="dot none" id="dot-shipping"></span></a>
+      <a href="#data" data-view="data">Data &amp; settings <span class="dot none"></span></a>
+    </nav>
+    <div class="rail-foot">
+      <span class="label">Planning cycle</span>
+      <span id="cycleNote"></span>
+    </div>
+  </aside>
+
+  <main>
+    <div class="topbar">
+      <div style="display:grid;gap:6px;min-width:0">
+        <h1 id="viewTitle">Overview</h1>
+        <div class="meta"><span id="storeName" class="muted"></span><span class="chip" id="sourceChip"></span></div>
+      </div>
+      <div class="meta">
+        <label class="ctrl" for="horizon">Plan for
+          <select id="horizon">
+            <option value="8">next 8 weeks</option>
+            <option value="12">next 12 weeks</option>
+            <option value="13">next 13 weeks</option>
+            <option value="26">next 26 weeks</option>
+          </select>
+        </label>
+        <span class="save-status" id="saveStatus" aria-live="polite"></span>
+      </div>
+    </div>
+    <div id="view"></div>
+  </main>
+</div>
+<div class="tip" id="barTip" hidden></div>
+
+<script src="engine.js"></script>
+<script>
+(function () {
+  "use strict";
+  const E = window.Equilibra;
+  const $ = (id) => document.getElementById(id);
+  const VIEWS = { overview: "Overview", demand: "Demand plan", inventory: "Inventory risk", marketing: "Marketing plan", shipping: "Shipping plan", data: "Data & settings" };
+
+  /* ---------- formatting ---------- */
+  const fmtN = (n, d = 0) => (n == null || !Number.isFinite(n) ? "–" : n.toLocaleString("en-US", { maximumFractionDigits: d, minimumFractionDigits: d }));
+  const fmtU = (n) => (n == null || !Number.isFinite(n) ? "–" : (n < 0 ? "−$" : "$") + Math.abs(n).toLocaleString("en-US", { maximumFractionDigits: Math.abs(n) < 100 ? 2 : 0, minimumFractionDigits: Math.abs(n) < 100 ? 2 : 0 }));
+  const fmtK = (n) => (Math.abs(n) >= 10000 ? (n < 0 ? "−$" : "$") + (Math.abs(n) / 1000).toFixed(1) + "k" : fmtU(n));
+  const pct = (x, d = 0) => (x == null || !Number.isFinite(x) ? "–" : (x * 100).toFixed(d) + "%");
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const signed = (x) => (x >= 0 ? "+" : "−") + pct(Math.abs(x));
+
+  /* ---------- state ---------- */
+  let state = E.sampleState();
+  let plan = null;
+  let sel = 0;
+  let view = "overview";
+
+  function recompute() {
+    try { plan = E.runPlan(state); }
+    catch (e) { plan = null; $("view").innerHTML = `<div class="panel"><p class="msg err">${esc(e.message)} Fix it under Data &amp; settings.</p></div>`; return false; }
+    return true;
+  }
+
+  /* ---------- line chart with crosshair tooltip ---------- */
+  function niceTicks(min, max, count) {
+    const span = max - min || 1, step0 = span / (count || 4);
+    const mag = Math.pow(10, Math.floor(Math.log10(step0))), norm = step0 / mag;
+    const step = (norm < 1.5 ? 1 : norm < 3 ? 2 : norm < 7 ? 5 : 10) * mag;
+    const out = [];
+    for (let v = Math.ceil(min / step) * step; v <= max + step * 1e-6; v += step) out.push(+v.toPrecision(12));
+    return out;
+  }
+  function lineChart(el, cfg) {
+    const W = 720, H = cfg.height || 260, L = 58, R = 18, T = 22, B = 30;
+    const xs = cfg.xs;
+    const xmin = cfg.xMin ?? Math.min(...xs), xmax = cfg.xMax ?? Math.max(...xs);
+    let ymax = 0;
+    const consider = (v) => { if (v != null && Number.isFinite(v)) ymax = Math.max(ymax, v); };
+    cfg.series.forEach((s) => s.ys.forEach(consider));
+    if (cfg.band) cfg.band.hi.forEach(consider);
+    (cfg.points || []).forEach((p) => consider(p.y));
+    const ticks = niceTicks(0, ymax * 1.05 || 1, 4);
+    ymax = Math.max(ymax * 1.05, ticks[ticks.length - 1]) || 1;
+    const sx = (x) => L + (x - xmin) / (xmax - xmin || 1) * (W - L - R);
+    const sy = (y) => H - B - y / ymax * (H - T - B);
+    const yFmt = cfg.yFmt || ((v) => fmtN(v));
+    let g = "";
+    ticks.forEach((t) => { g += `<line x1="${L}" x2="${W - R}" y1="${sy(t)}" y2="${sy(t)}" stroke="var(--grid)"/><text x="${L - 8}" y="${sy(t) + 4}" text-anchor="end">${yFmt(t)}</text>`; });
+    (cfg.xTicks || []).forEach((t) => {
+      const anchor = sx(t) < L + 20 ? "start" : sx(t) > W - R - 20 ? "end" : "middle";
+      g += `<text x="${sx(t)}" y="${H - 8}" text-anchor="${anchor}">${cfg.xTickFmt ? cfg.xTickFmt(t) : t}</text>`;
+    });
+    g += `<line x1="${L}" x2="${W - R}" y1="${sy(0)}" y2="${sy(0)}" stroke="var(--rule)"/>`;
+    if (cfg.band) {
+      const idx = xs.map((_, i) => i).filter((i) => cfg.band.lo[i] != null && cfg.band.hi[i] != null);
+      if (idx.length) {
+        let d = "M" + idx.map((i) => `${sx(xs[i]).toFixed(1)},${sy(cfg.band.hi[i]).toFixed(1)}`).join(" L");
+        d += " L" + idx.slice().reverse().map((i) => `${sx(xs[i]).toFixed(1)},${sy(cfg.band.lo[i]).toFixed(1)}`).join(" L") + " Z";
+        g += `<path d="${d}" fill="${cfg.band.color}"/>`;
+      }
+    }
+    (cfg.markers || []).forEach((m) => {
+      if (m.x < xmin || m.x > xmax) return;
+      const x = sx(m.x), anchor = x > W - R - 80 ? "end" : x < L + 80 ? "start" : "middle";
+      g += `<line x1="${x}" x2="${x}" y1="${T}" y2="${sy(0)}" stroke="${m.color || "var(--muted)"}" stroke-width="1.5" stroke-dasharray="${m.dash || "3 3"}"/>`;
+      g += `<text x="${x}" y="${T - 8}" text-anchor="${anchor}" style="fill:${m.color || "var(--muted)"}">${esc(m.label)}</text>`;
+    });
+    cfg.series.forEach((s) => {
+      let seg = [], d = "";
+      const flush = () => { if (seg.length > 1) d += "M" + seg.join(" L") + " "; seg = []; };
+      s.ys.forEach((y, i) => { if (y == null) flush(); else seg.push(`${sx(xs[i]).toFixed(1)},${sy(y).toFixed(1)}`); });
+      flush();
+      g += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="${s.width || 2}" ${s.dash ? `stroke-dasharray="${s.dash}"` : ""} stroke-linejoin="round" stroke-linecap="round"/>`;
+    });
+    (cfg.points || []).forEach((p) => {
+      g += `<circle cx="${sx(p.x)}" cy="${sy(p.y)}" r="5" fill="${p.hollow ? "var(--surface)" : p.color}" stroke="${p.hollow ? p.color : "var(--surface)"}" stroke-width="2"/>`;
+    });
+    const legend = cfg.series.length + (cfg.band ? 1 : 0) >= 2
+      ? `<div class="legend">${cfg.series.filter((s) => !s.noLegend).map((s) => `<span><i style="background:${s.color}${s.dash ? ";opacity:.75" : ""}"></i>${esc(s.name)}</span>`).join("")}${cfg.band ? `<span><i class="area" style="background:${cfg.band.color}"></i>${esc(cfg.band.name)}</span>` : ""}${cfg.legendExtra || ""}</div>` : "";
+    el.innerHTML = `${legend}<div class="chart-wrap"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(cfg.label || "")}">${g}<line class="xh" x1="0" x2="0" y1="${T}" y2="${sy(0)}" stroke="var(--faint)" stroke-width="1" visibility="hidden"/><g class="xh-dots"></g><rect x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" fill="transparent" class="hit"/></svg><div class="tip" hidden></div></div>`;
+    const svg = el.querySelector("svg"), tip = el.querySelector(".tip"), xh = svg.querySelector(".xh"), dots = svg.querySelector(".xh-dots"), wrap = el.querySelector(".chart-wrap");
+    const hide = () => { tip.hidden = true; xh.setAttribute("visibility", "hidden"); dots.innerHTML = ""; };
+    svg.querySelector(".hit").addEventListener("pointermove", (ev) => {
+      const r = svg.getBoundingClientRect();
+      const vx = (ev.clientX - r.left) / r.width * W;
+      const xv = xmin + (vx - L) / (W - L - R) * (xmax - xmin);
+      let i = 0, best = Infinity;
+      xs.forEach((x, k) => { const dd = Math.abs(x - xv); if (dd < best) { best = dd; i = k; } });
+      const px = sx(xs[i]);
+      xh.setAttribute("x1", px); xh.setAttribute("x2", px); xh.setAttribute("visibility", "visible");
+      let rows = "", dd = "";
+      cfg.series.forEach((s) => {
+        const y = s.ys[i];
+        if (y == null) return;
+        rows += `<div class="r"><span><i style="background:${s.color}"></i>${esc(s.name)}</span><span>${yFmt(y, true)}</span></div>`;
+        dd += `<circle cx="${px}" cy="${sy(y)}" r="4" fill="${s.color}" stroke="var(--surface)" stroke-width="2"/>`;
+      });
+      if (cfg.band && cfg.band.lo[i] != null) rows += `<div class="r"><span><i style="background:${cfg.band.color}"></i>${esc(cfg.band.name)}</span><span>${yFmt(cfg.band.lo[i], true)} – ${yFmt(cfg.band.hi[i], true)}</span></div>`;
+      dots.innerHTML = dd;
+      tip.innerHTML = `<div class="t">${cfg.xFmt ? cfg.xFmt(xs[i]) : xs[i]}</div>${rows}`;
+      tip.hidden = false;
+      const wr = wrap.getBoundingClientRect(), left = px / W * wr.width;
+      tip.style.top = "8px";
+      tip.style.left = (left > wr.width / 2 ? left - tip.offsetWidth - 12 : left + 12) + "px";
+    });
+    svg.querySelector(".hit").addEventListener("pointerleave", hide);
+  }
+  const spark = (vals, color) => {
+    const max = Math.max(...vals), min = Math.min(...vals), n = vals.length;
+    const pts = vals.map((v, i) => `${(i / (n - 1) * 200).toFixed(1)},${(32 - (v - min) / (max - min || 1) * 28).toFixed(1)}`);
+    const last = pts[pts.length - 1].split(",");
+    return `<svg class="spark" viewBox="-4 -2 208 38" preserveAspectRatio="none" aria-hidden="true"><path d="M0,34 L${pts.join(" L")} L200,34 Z" fill="var(--accent-soft)"/><polyline points="${pts.join(" ")}" fill="none" stroke="${color}" stroke-width="1.6" vector-effect="non-scaling-stroke"/><circle cx="${last[0]}" cy="${last[1]}" r="3" fill="${color}"/></svg>`;
+  };
+
+  /* ---------- KPI widget ---------- */
+  const plus = `<svg viewBox="0 0 14 14" aria-hidden="true"><path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="2" fill="none"/></svg>`;
+  function kpi(k) {
+    return `<article class="kpi">
+      <div class="kpi-top"><p class="label">${esc(k.label)}</p>${k.state ? `<span class="pill ${k.state[0]}">${esc(k.state[1])}</span>` : ""}</div>
+      <p class="big"${k.color ? ` style="color:${k.color}"` : ""}>${k.value}</p>
+      <p class="sub">${k.sub}</p>
+      ${k.viz || ""}
+      <button class="explain-btn" aria-expanded="false" type="button">Explain ${plus}</button>
+      <div class="explain" hidden>
+        <h4>What it means</h4><p>${k.what}</p>
+        <h4>How we calculated it</h4><div class="how">${k.how}</div>
+        <h4>What to do</h4><p class="do">${k.action}</p>
+      </div>
+    </article>`;
+  }
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest(".explain-btn");
+    if (!b) return;
+    const open = b.getAttribute("aria-expanded") === "true";
+    b.setAttribute("aria-expanded", String(!open));
+    b.nextElementSibling.hidden = open;
+    b.firstChild.textContent = open ? "Explain " : "Hide ";
+  });
+
+  const skuSwitcher = () => `<div class="seg" role="group" aria-label="Product">${state.skus.map((s, i) => `<button type="button" data-sku="${i}" aria-pressed="${i === sel}">${esc(s.name)}</button>`).join("")}</div>`;
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-sku]");
+    if (!b) return;
+    sel = +b.dataset.sku;
+    renderView();
+  });
+
+  /* ---------- status helpers ---------- */
+  function statuses() {
+    const t = plan.totals, m = plan.marketing;
+    const acc = t.wape == null ? ["info", "New"] : t.wape < 0.15 ? ["ok", "Reliable"] : t.wape < 0.3 ? ["warn", "Fair"] : ["risk", "Noisy"];
+    const stock = t.pStockoutMax > 0.35 ? ["risk", "High"] : t.pStockoutMax > 0.2 ? ["warn", "Watch"] : ["ok", "Covered"];
+    const overShare = t.orderCost > 0 ? t.overCost / t.orderCost : 0;
+    const over = overShare > 0.1 ? ["warn", "Heavy"] : ["ok", pct(overShare, 1) + " of order"];
+    const mk = !m.profitable ? ["warn", "Unprofitable"] : m.channels.some((c) => c.currentMarginalRoas != null && c.currentMarginalRoas < m.breakEvenRoas) ? ["warn", "Shift mix"] : ["ok", "On plan"];
+    const gapLines = plan.lines.filter((l) => l.ship.best && l.ship.best.lostUnits > 0.5);
+    const ship = gapLines.length ? ["warn", `${gapLines.length} gap${gapLines.length > 1 ? "s" : ""}`] : ["ok", "On time"];
+    return { acc, stock, over, mk, ship };
+  }
+
+  /* ---------- views ---------- */
+  function overview() {
+    const t = plan.totals, m = plan.marketing, H = plan.horizon, st = statuses();
+    const growth = t.lastPeriodUnits > 0 ? t.forecastUnits / t.lastPeriodUnits - 1 : 0;
+    const weeklyAll = plan.lines[0].fc.weeks.map((_, k) => plan.lines.reduce((s, l) => s + l.fc.weeks[k].mean, 0));
+    const histAll = Array.from({ length: 16 }, (_, k) => plan.lines.reduce((s, l) => s + l.sku.sales[l.sku.sales.length - 16 + k], 0));
+    const worst = plan.lines.slice().sort((a, b) => b.inv.atOptimal.under - a.inv.atOptimal.under)[0];
+    const heavy = plan.lines.slice().sort((a, b) => b.inv.atOptimal.over - a.inv.atOptimal.over)[0];
+    const cutCh = m.channels.filter((c) => c.recommendedSpend < c.currentSpend * 0.9);
+    const upCh = m.channels.filter((c) => c.recommendedSpend > c.currentSpend * 1.1);
+    const splitLines = plan.lines.filter((l) => l.ship.best && l.ship.best.legs.length > 1);
+
+    const cards = [
+      kpi({
+        label: `Demand forecast · ${H} wks`, state: [growth >= 0 ? "ok" : "warn", signed(growth) + " vs last"],
+        value: `${fmtN(t.forecastUnits)} <small>units</small>`,
+        sub: `80% range ${fmtN(t.forecastP10)} – ${fmtN(t.forecastP90)}`,
+        viz: spark(histAll.concat(weeklyAll), "var(--accent)"),
+        what: `Units we expect to sell across all products over the next ${H} weeks if you keep today's marketing. The range is where the real number lands 8 times out of 10.`,
+        how: `Damped Holt-Winters per product (level + trend + 52-week season), parameters fitted to your history.<br>2,000 simulated futures → mean and 10th/90th percentiles.<br>Planner judgment, where entered, is combined with Bayes' rule.`,
+        action: growth > 0.15 ? `Demand is up ${pct(growth)} on the last ${H} weeks. Check the inventory and shipping plans can carry it.` : growth < -0.1 ? `Demand is softer than the last ${H} weeks. Avoid ordering to last period's volume.` : `Plan stock against the range, not the single number.`
+      }),
+      kpi({
+        label: "Forecast accuracy", state: st.acc,
+        value: t.wape == null ? "–" : pct(1 - t.wape, 0),
+        sub: t.wape == null ? "Needs 8+ weeks of history" : `Average miss ${pct(t.wape, 1)} of weekly units (WAPE)`,
+        what: `How close our one-week-ahead forecasts came to what you actually sold over the last 8 weeks. Lower misses mean tighter ranges and less safety stock.`,
+        how: `WAPE = Σ |actual − forecast| ÷ Σ actual, last 8 weeks, all products<br>accuracy = 1 − WAPE = ${t.wape == null ? "–" : pct(1 - t.wape, 1)}`,
+        action: st.acc[0] === "ok" ? `Forecasts are dependable. Trust the recommended order quantities.` : `Forecasts are noisy. Add promo dates and stockout weeks under Data & settings so they aren't read as demand changes.`
+      }),
+      kpi({
+        label: "Recommended order", state: ["info", `${plan.lines.filter((l) => l.inv.orderQty > 0).length} POs`],
+        value: `${fmtN(t.orderUnits)} <small>units</small>`,
+        sub: `${fmtK(t.orderCost)} at landed cost · ${plan.lines.map((l) => `${esc(l.sku.name.split(" ")[0])} ${fmtN(l.inv.orderQty)}`).join(" · ")}`,
+        what: `How much to buy per product so the expected cost of running out and the expected cost of leftovers are balanced. Stock on hand and on order is already subtracted.`,
+        how: `Q* = demand quantile at the critical ratio<br>critical ratio = Cu ÷ (Cu + Co)<br>${plan.lines.map((l) => `${esc(l.sku.name)}: ${fmtU(l.inv.cu)} ÷ (${fmtU(l.inv.cu)} + ${fmtU(l.inv.co)}) = ${pct(l.inv.criticalRatio)} → Q* ${fmtN(l.inv.Qstar)} − ${fmtN(l.sku.onHand + l.sku.onOrder)} available`).join("<br>")}`,
+        action: `Raise purchase orders for these quantities. See Shipping for how to split them by freight mode.`
+      }),
+      kpi({
+        label: "Cost of understocking", state: st.stock, color: "var(--under)",
+        value: fmtK(t.underCost),
+        sub: `Expected lost margin after ordering · ${fmtK(t.underIfNoOrder)} if you don't`,
+        what: `Margin you are expected to lose from customers who can't buy because you sold out, weighted by how likely each demand level is.`,
+        how: `P(demand | data) ∝ P(data | demand) · P(demand)<br>E[lost] = Cu × E[(D − Q)⁺] = Cu × σ × L(z)<br>${esc(worst.sku.name)}: ${fmtU(worst.inv.cu)} × ${fmtN(worst.inv.atOptimal.expShort)} units = ${fmtU(worst.inv.atOptimal.under)} (stockout chance ${pct(worst.inv.atOptimal.pStockout)})`,
+        action: `Most of the risk sits in ${esc(worst.sku.name)}. ${worst.ship.best && worst.ship.best.lostUnits > 0.5 ? `It runs out in ${fmtN(worst.ship.coverDays)} days, before any shipment lands. Use the fastest leg in the shipping plan.` : `Keep the recommended order. Ordering less raises this cost faster than it saves on leftovers.`}`
+      }),
+      kpi({
+        label: "Cost of overstocking", state: st.over, color: "var(--over)",
+        value: fmtK(t.overCost),
+        sub: `Expected markdowns and storage on leftovers`,
+        what: `Cash you are expected to lose on units left at the end of the period: the drop from landed cost to clearance price, plus storage while they wait.`,
+        how: `E[leftover] = Co × E[(Q − D)⁺]<br>Co = landed cost − clearance + storage × ${H}/2 wks<br>${esc(heavy.sku.name)}: ${fmtU(heavy.inv.co)} × ${fmtN(heavy.inv.atOptimal.expLeft)} units = ${fmtU(heavy.inv.atOptimal.over)}`,
+        action: t.overCost > t.underCost ? `Expected leftovers cost more than expected stockouts, which is the right trade at your margins: a missed sale of ${esc(heavy.sku.name)} loses ${fmtU(heavy.inv.cu)}, a leftover only ${fmtU(heavy.inv.co)}. To cut it, get a better clearance price or cheaper storage.` : `Leftover risk is small next to stockout risk. No action needed.`
+      }),
+      kpi({
+        label: "Marketing to hit target", state: st.mk,
+        value: fmtK(m.horizonBudget),
+        sub: `${fmtU(m.weeklyBudget)}/wk vs ${fmtU(m.currentWeeklySpend)} today · target ${fmtN(t.targetUnits)} units`,
+        viz: `<div class="legend" style="margin:0">${m.channels.map((c, i) => `<span><i style="background:var(--s${i + 1})"></i>${esc(c.name)} ${fmtU(c.recommendedSpend)}</span>`).join("")}</div>`,
+        what: `The ad spend that delivers your demand target at the lowest cost. Each channel gets money until its next dollar buys a sale as cheaply as the next dollar anywhere else.`,
+        how: `units_c = a · spend^b, fitted per channel (log-log regression)<br>allocate so marginal CAC is equal: ${fmtU(m.marginalCac)} per extra unit<br>break-even marginal CAC = unit margin ${fmtU(plan.avgMargin)}`,
+        action: !m.profitable ? `Reaching ${fmtN(t.targetUnits)} units costs more per extra sale than you earn. The most you can sell profitably is ${fmtN(m.maxProfitableTarget)} units.` : `${upCh.length ? `Raise ${upCh.map((c) => esc(c.name)).join(", ")}. ` : ""}${cutCh.length ? `Cut ${cutCh.map((c) => esc(c.name)).join(", ")}: the next dollar there returns less than it costs.` : ""}`
+      }),
+      kpi({
+        label: "Shipping plan", state: st.ship,
+        value: fmtK(t.shipTotal),
+        sub: `Total landed cost · ${plan.lines.map((l) => `${esc(l.sku.name.split(" ")[0])}: ${l.ship.best ? esc(l.ship.best.label) : "no order"}`).join(" · ")}`,
+        what: `Which freight mode to use per product, and how many units go on each. Faster modes cost more but stop you selling out while goods are in transit.`,
+        how: `total = freight + fixed fees + capital tied up in transit + expected lost margin before arrival<br>${plan.lines.map((l) => `${esc(l.sku.name)}: ${l.ship.best ? esc(l.ship.best.label) + " " + fmtU(l.ship.best.total) : "no order"} (cover ${fmtN(l.ship.coverDays)} days)`).join("<br>")}`,
+        action: splitLines.length ? `Send the bulk by the slow mode and bridge the gap with the fast leg. Open Shipping for unit splits.` : `Use the single mode shown per product. Cover is long enough to wait for it.`
+      }),
+      kpi({
+        label: "Cash needed", state: [t.contribution > 0 ? "ok" : "risk", `${fmtK(t.contribution)} contribution`],
+        value: fmtK(t.cashNeeded),
+        sub: `Stock ${fmtK(t.orderCost)} · freight ${fmtK(t.freight)} · ads ${fmtK(m.horizonBudget)}`,
+        what: `The cash this plan uses over the next ${H} weeks, and the contribution it is expected to return after product, freight, storage and marketing costs.`,
+        how: `cash = Σ order × landed cost + freight + ad budget<br>contribution = E[sales] × price + E[leftover] × clearance − stock − storage − freight − ads`,
+        action: t.contribution > 0 ? `Check this fits your runway. If cash is tight, the marketing budget is the most flexible line.` : `The plan loses money at current prices and costs. Revisit pricing or the demand target.`
+      })
+    ];
+
+    const rows = plan.lines.map((l) => `<tr>
+      <td>${esc(l.sku.name)}</td>
+      <td class="n">${fmtN(l.plannedDemand.mu)}</td>
+      <td class="n muted">${fmtN(l.fc.total.p10)} – ${fmtN(l.fc.total.p90)}</td>
+      <td class="n">${fmtN(l.inv.orderQty)}</td>
+      <td class="n">${pct(l.inv.atOptimal.pStockout)}</td>
+      <td class="n" style="color:var(--under)">${fmtU(l.inv.atOptimal.under)}</td>
+      <td class="n" style="color:var(--over)">${fmtU(l.inv.atOptimal.over)}</td>
+      <td>${l.ship.best ? esc(l.ship.best.legs.map((g) => `${g.mode} ${fmtN(g.units)}`).join(" + ")) : "–"}</td>
+    </tr>`).join("");
+
+    return `<div class="kpis">${cards.join("")}</div>
+    <div class="panel">
+      <div class="panel-head"><h2>Plan by product</h2><p class="muted">Planned demand includes extra sales from the marketing plan.</p></div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Product</th><th class="n">Planned demand</th><th class="n">Forecast 80% range</th><th class="n">Order</th><th class="n">Stockout chance</th><th class="n">Lost-sales cost</th><th class="n">Leftover cost</th><th>Shipping</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </div>`;
+  }
+
+  function demand() {
+    const l = plan.lines[sel], H = plan.horizon, fc = l.fc;
+    const j = (state.settings.judgment || {})[l.sku.id] || {};
+    const b = l.bayes;
+    const p = fc.params;
+    return `${skuSwitcher()}
+    <div class="stats">
+      <div><span class="label">Forecast · ${H} wks</span><span class="v acc">${fmtN(fc.total.mean)}</span></div>
+      <div><span class="label">80% range</span><span class="v">${fmtN(fc.total.p10)} – ${fmtN(fc.total.p90)}</span></div>
+      <div><span class="label">vs last ${H} wks</span><span class="v">${signed(fc.total.mean / fc.lastPeriod - 1)}</span></div>
+      <div><span class="label">Accuracy</span><span class="v">${fc.wape == null ? "–" : pct(1 - fc.wape)}</span></div>
+      <div><span class="label">After your judgment</span><span class="v">${fmtN(b.posterior.mu)}</span></div>
+    </div>
+    <div class="grid2">
+      <div class="panel">
+        <div class="panel-head"><h2>Weekly demand · ${esc(l.sku.name)}</h2><p class="muted">Last 52 weeks and the next ${H}</p></div>
+        <div id="chDemand"></div>
+        <p class="note">Model: ${fc.seasonal ? "seasonal" : "non-seasonal (needs 104 weeks for yearly seasonality)"} Holt-Winters, α ${p.alpha} · β ${p.beta} · γ ${p.gamma} · damping ${p.damp}. Shaded band: 10th to 90th percentile of 2,000 simulated futures.</p>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Add your judgment</h2></div>
+        <p class="muted" style="font-size:.88rem">Know something the data doesn't, like a launch, a retailer deal or a price change? Enter what you expect. Bayes' rule blends it with the forecast, weighted by how sure each source is.</p>
+        <div class="form-row" style="margin-top:12px">
+          <label class="field" for="jUnits">Your expected units (${H} wks)<input class="in mono" id="jUnits" type="number" min="0" step="10" value="${j.units || ""}" placeholder="${fmtN(fc.total.mean).replace(/,/g, "")}"></label>
+          <label class="field" for="jConf">How sure are you?
+            <select class="in" id="jConf">
+              <option value="low"${j.confidence === "low" ? " selected" : ""}>Rough guess (±40%)</option>
+              <option value="medium"${!j.confidence || j.confidence === "medium" ? " selected" : ""}>Fairly sure (±25%)</option>
+              <option value="high"${j.confidence === "high" ? " selected" : ""}>Very sure (±12%)</option>
+            </select></label>
+          <button class="btn ghost small" type="button" id="jClear">Clear</button>
+        </div>
+        <div id="chBayes" style="margin-top:12px"></div>
+        <p class="note">${b.prior
+          ? `Posterior ${fmtN(b.posterior.mu)} ± ${fmtN(b.posterior.sd)} units. The data gets ${pct(b.posterior.weightOnData)} of the weight because its spread (±${fmtN(b.evidence.sd)}) is ${b.evidence.sd < b.prior.sd ? "tighter" : "wider"} than yours (±${fmtN(b.prior.sd)}).`
+          : `No judgment entered: the plan uses the statistical forecast, ${fmtN(b.posterior.mu)} ± ${fmtN(b.posterior.sd)} units.`}</p>
+      </div>
+    </div>`;
+  }
+  function demandCharts() {
+    const l = plan.lines[sel], H = plan.horizon, fc = l.fc;
+    const hist = l.sku.sales.slice(-52);
+    const xs = [];
+    for (let k = -hist.length + 1; k <= H; k++) xs.push(k);
+    const wk = (k) => (k === 0 ? "This week" : k < 0 ? `${-k} wks ago` : `In ${k} wk${k > 1 ? "s" : ""}`);
+    lineChart($("chDemand"), {
+      label: "Weekly units sold and forecast", xs, height: 270,
+      xTicks: xs.filter((k) => k % 13 === 0 || k === H), xTickFmt: (k) => (k === 0 ? "Now" : k < 0 ? `${k}w` : `+${k}w`), xFmt: wk,
+      series: [
+        { name: "Units sold", ys: xs.map((k) => (k <= 0 ? hist[hist.length - 1 + k] : null)), color: "var(--ink)", width: 1.6 },
+        { name: "Forecast", ys: xs.map((k) => (k === 0 ? hist[hist.length - 1] : k > 0 ? fc.weeks[k - 1].mean : null)), color: "var(--accent)", width: 2.2, dash: "5 4" }
+      ],
+      band: { name: "80% range", color: "var(--accent-soft)", lo: xs.map((k) => (k > 0 ? fc.weeks[k - 1].p10 : null)), hi: xs.map((k) => (k > 0 ? fc.weeks[k - 1].p90 : null)) },
+      markers: [{ x: 0, label: "Today", color: "var(--muted)" }]
+    });
+    const b = l.bayes;
+    const curves = [b.evidence, b.posterior].concat(b.prior ? [b.prior] : []);
+    const lo = Math.max(0, Math.min(...curves.map((c) => c.mu - 3.2 * c.sd))), hi = Math.max(...curves.map((c) => c.mu + 3.2 * c.sd));
+    const bx = Array.from({ length: 121 }, (_, i) => lo + (hi - lo) * i / 120);
+    const pdf = (c) => bx.map((x) => E.phi((x - c.mu) / c.sd) / c.sd * 1000);
+    const series = [];
+    if (b.prior) series.push({ name: "Your judgment (prior)", ys: pdf(b.prior), color: "var(--s2)", dash: "4 4" });
+    series.push({ name: "Forecast (evidence)", ys: pdf(b.evidence), color: "var(--s1)", dash: b.prior ? "2 3" : null });
+    if (b.prior) series.push({ name: "Blended (posterior)", ys: pdf(b.posterior), color: "var(--ink)", width: 2.6 });
+    lineChart($("chBayes"), {
+      label: "Prior, evidence and posterior demand distributions", xs: bx, height: 210,
+      xTicks: niceTicks(lo, hi, 4).filter((t) => t >= lo && t <= hi), xTickFmt: (v) => fmtN(v), xFmt: (v) => `${fmtN(v)} units`,
+      yFmt: (v, tip) => (tip ? (v / 1000 * (hi - lo) / 120 * 100).toFixed(2) + "%" : ""),
+      series
+    });
+    const save = () => {
+      const u = +$("jUnits").value;
+      state.settings.judgment = state.settings.judgment || {};
+      if (u > 0) state.settings.judgment[l.sku.id] = { units: u, confidence: $("jConf").value };
+      else delete state.settings.judgment[l.sku.id];
+      changed(true);
+    };
+    $("jUnits").addEventListener("change", save);
+    $("jConf").addEventListener("change", save);
+    $("jClear").addEventListener("click", () => { $("jUnits").value = ""; save(); });
+  }
+
+  function inventory() {
+    const l = plan.lines[sel], inv = l.inv, d = l.plannedDemand;
+    const avail = l.sku.onHand + l.sku.onOrder;
+    const scen = [
+      ["Don't order", avail],
+      ["Order 20% less", avail + inv.orderQty * 0.8],
+      ["Recommended", Math.max(avail, inv.Qstar)],
+      ["Order 20% more", avail + inv.orderQty * 1.2]
+    ].map(([name, Q]) => ({ name, order: Q - avail, r: E.stockCosts(Q, d.mu, Math.max(1, d.sd), inv.cu, inv.co) }));
+    return `${skuSwitcher()}
+    <div class="stats">
+      <div><span class="label">Planned demand</span><span class="v">${fmtN(d.mu)} ± ${fmtN(d.sd)}</span></div>
+      <div><span class="label">Lost margin per missed sale (Cu)</span><span class="v under">${fmtU(inv.cu)}</span></div>
+      <div><span class="label">Loss per leftover (Co)</span><span class="v over">${fmtU(inv.co)}</span></div>
+      <div><span class="label">Target in-stock chance</span><span class="v acc">${pct(inv.criticalRatio)}</span></div>
+      <div><span class="label">Order</span><span class="v">${fmtN(inv.orderQty)}</span></div>
+    </div>
+    <div class="grid2">
+      <div class="panel">
+        <div class="panel-head"><h2>Expected cost by stock level · ${esc(l.sku.name)}</h2></div>
+        <div id="chCost"></div>
+        <p class="note">Each point weighs every possible demand by its posterior probability. The total is lowest where the two risks trade off: one more unit saves as much lost margin as it adds in expected leftovers.</p>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Compare order sizes</h2></div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Option</th><th class="n">Order</th><th class="n">Stockout</th><th class="n">Fill rate</th><th class="n">Total cost</th></tr></thead>
+          <tbody>${scen.map((s) => `<tr class="${s.name === "Recommended" ? "best" : ""}"><td>${s.name}</td><td class="n">${fmtN(s.order)}</td><td class="n">${pct(s.r.pStockout)}</td><td class="n">${pct(s.r.fillRate, 1)}</td><td class="n">${fmtU(s.r.total)}</td></tr>`).join("")}</tbody>
+        </table></div>
+        <p class="note">Fill rate is the share of demand you can serve. Total cost is expected lost margin plus expected leftover loss.</p>
+      </div>
+    </div>`;
+  }
+  function inventoryCharts() {
+    const l = plan.lines[sel], inv = l.inv;
+    const xs = inv.curve.map((c) => c.Q);
+    const avail = l.sku.onHand + l.sku.onOrder;
+    lineChart($("chCost"), {
+      label: "Expected cost against total stock", xs, height: 280,
+      xTicks: niceTicks(xs[0], xs[xs.length - 1], 5).filter((t) => t >= xs[0] && t <= xs[xs.length - 1]), xTickFmt: (v) => fmtN(v), xFmt: (v) => `${fmtN(v)} units in stock`,
+      yFmt: (v) => fmtK(v),
+      series: [
+        { name: "Lost-sales cost", ys: inv.curve.map((c) => c.under), color: "var(--under)" },
+        { name: "Leftover cost", ys: inv.curve.map((c) => c.over), color: "var(--over)" },
+        { name: "Total", ys: inv.curve.map((c) => c.total), color: "var(--ink)", width: 2.6 }
+      ],
+      markers: [{ x: inv.Qstar, label: `Best ${fmtN(inv.Qstar)}`, color: "var(--accent)", dash: "0" }].concat(avail >= xs[0] ? [{ x: avail, label: "Stock without order", color: "var(--muted)" }] : []),
+      points: [{ x: inv.Qstar, y: inv.atOptimal.total, color: "var(--accent)" }]
+    });
+  }
+
+  function marketing() {
+    const m = plan.marketing, t = plan.totals;
+    const statusOf = (c) => (c.recommendedSpend > c.currentSpend * 1.1 ? ["ok", "Scale up"] : c.recommendedSpend < c.currentSpend * 0.9 ? ["risk", "Cut back"] : ["info", "Hold"]);
+    return `<div class="panel">
+      <div class="form-row">
+        <label class="field" for="target">Demand target, next ${plan.horizon} weeks (units)<input class="in mono" id="target" type="number" min="0" step="50" value="${t.targetUnits}"></label>
+        <button class="btn ghost small" type="button" id="targetReset">Reset to forecast +5%</button>
+        <p class="muted" style="font-size:.85rem">Forecast with today's spend: <span class="mono">${fmtN(t.forecastUnits)}</span> units. Gap: <span class="mono">${fmtN(t.targetUnits - t.forecastUnits)}</span>.</p>
+      </div>
+    </div>
+    <div class="banner ${m.profitable ? "ok" : "warn"}">
+      <div><strong>${m.profitable ? `Target reachable at a profit with ${fmtU(m.weeklyBudget)} a week.` : `Target needs ${fmtU(m.weeklyBudget)} a week and loses money on the last sales.`}</strong>
+      <span class="muted">${m.profitable ? `The most expensive extra sale costs ${fmtU(m.marginalCac)} in ads against a ${fmtU(plan.avgMargin)} unit margin.` : `The last extra sale costs ${fmtU(m.marginalCac)} in ads but earns ${fmtU(plan.avgMargin)}. The profitable ceiling is ${fmtN(m.maxProfitableTarget)} units with ${fmtK(m.maxProfitableBudget)} over the period.`}</span></div>
+    </div>
+    <div class="stats">
+      <div><span class="label">Budget · ${plan.horizon} wks</span><span class="v acc">${fmtK(m.horizonBudget)}</span></div>
+      <div><span class="label">Weekly vs today</span><span class="v">${fmtU(m.weeklyBudget)} <small class="muted">${signed(m.weeklyBudget / (m.currentWeeklySpend || 1) - 1)}</small></span></div>
+      <div><span class="label">Extra units from ads</span><span class="v">${fmtN(m.addedUnits)}</span></div>
+      <div><span class="label">Blended CAC</span><span class="v">${fmtU(m.blendedCac)}</span></div>
+      <div><span class="label">Break-even ROAS</span><span class="v">${m.breakEvenRoas.toFixed(2)}×</span></div>
+    </div>
+    <div class="grid2">
+      <div class="panel">
+        <div class="panel-head"><h2>Sales response by channel</h2><p class="muted">Weekly units from each channel at each spend level</p></div>
+        <div id="chResp"></div>
+        <p class="note">Hollow dot: today's spend. Filled dot: recommended. Curves flatten as spend rises, so each extra dollar buys fewer sales. The plan stops each channel where its next sale costs the same as in every other channel.</p>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Recommended mix</h2></div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Channel</th><th class="n">Today/wk</th><th class="n">Plan/wk</th><th class="n">ROAS now</th><th class="n">Next-$ ROAS</th><th></th></tr></thead>
+          <tbody>${m.channels.map((c) => { const s = statusOf(c); return `<tr><td>${esc(c.name)}</td><td class="n">${fmtU(c.currentSpend)}</td><td class="n">${fmtU(c.recommendedSpend)}</td><td class="n">${c.currentRoas == null ? "–" : c.currentRoas.toFixed(2) + "×"}</td><td class="n" style="color:${c.currentMarginalRoas != null && c.currentMarginalRoas < m.breakEvenRoas ? "var(--under)" : "var(--ink)"}">${c.currentMarginalRoas == null ? "–" : c.currentMarginalRoas.toFixed(2) + "×"}</td><td><span class="pill ${s[0]}">${s[1]}</span></td></tr>`; }).join("")}</tbody>
+        </table></div>
+        <p class="note">ROAS = revenue ÷ ad spend. Next-$ ROAS is what the next dollar returns at today's spend; below ${m.breakEvenRoas.toFixed(2)}× it loses money after product cost. Elasticities: ${m.channels.map((c) => `${esc(c.name)} ${c.elasticity.toFixed(2)}${c.fitted ? "" : " (assumed)"}`).join(", ")}.</p>
+      </div>
+    </div>`;
+  }
+  function marketingCharts() {
+    const m = plan.marketing;
+    const maxS = Math.max(...m.channels.map((c) => Math.max(c.currentSpend, c.recommendedSpend, c.maxProfitableSpend))) * 1.25 || 1000;
+    const xs = Array.from({ length: 81 }, (_, i) => maxS * i / 80);
+    lineChart($("chResp"), {
+      label: "Units per week by weekly spend", xs, height: 270,
+      xTicks: niceTicks(0, maxS, 5).filter((t) => t <= maxS), xTickFmt: (v) => fmtK(v), xFmt: (v) => `${fmtU(v)} per week`,
+      yFmt: (v) => fmtN(v),
+      series: m.channels.map((c, i) => ({ name: c.name, ys: xs.map((s) => E.unitsAt(c.curve, s)), color: `var(--s${i + 1})` })),
+      points: m.channels.flatMap((c, i) => [
+        { x: c.currentSpend, y: E.unitsAt(c.curve, c.currentSpend), color: `var(--s${i + 1})`, hollow: true },
+        { x: c.recommendedSpend, y: E.unitsAt(c.curve, c.recommendedSpend), color: `var(--s${i + 1})` }
+      ])
+    });
+    $("target").addEventListener("change", () => { state.settings.targetUnits = Math.max(0, +$("target").value || 0); changed(true); });
+    $("targetReset").addEventListener("click", () => { state.settings.targetUnits = 0; changed(true); });
+  }
+
+  function shipping() {
+    const l = plan.lines[sel], sh = l.ship;
+    if (!sh.best) return `${skuSwitcher()}<div class="panel"><p class="muted">Nothing to ship: stock on hand and on order already covers the plan for ${esc(l.sku.name)}.</p></div>`;
+    const opts = sh.options.slice(0, 8);
+    const maxT = Math.max(...opts.map((o) => o.total));
+    const bar = (o) => {
+      const seg = (v, c, n) => (v > 0 ? `<span style="width:${(v / maxT * 100).toFixed(2)}%;background:${c}" data-tip="${n}: ${fmtU(v)}"></span>` : "");
+      return `<div class="stack" role="img" aria-label="Freight ${fmtU(o.freight)}, capital ${fmtU(o.capital)}, lost sales ${fmtU(o.stockout)}">${seg(o.freight, "var(--s1)", "Freight")}${seg(o.capital, "var(--s3)", "Capital in transit")}${seg(o.stockout, "var(--under)", "Lost sales before arrival")}</div>`;
+    };
+    return `${skuSwitcher()}
+    <div class="stats">
+      <div><span class="label">Units to ship</span><span class="v">${fmtN(sh.qty)}</span></div>
+      <div><span class="label">Stock lasts</span><span class="v ${sh.coverDays < 14 ? "under" : ""}">${fmtN(sh.coverDays)} days</span></div>
+      <div><span class="label">Best option</span><span class="v acc" style="font-size:1rem">${esc(sh.best.label)}</span></div>
+      <div><span class="label">Total landed cost</span><span class="v">${fmtU(sh.best.total)}</span></div>
+      <div><span class="label">Saving vs best single mode</span><span class="v">${fmtU(Math.min(...sh.options.filter((o) => o.legs.length === 1).map((o) => o.total)) - sh.best.total)}</span></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>Freight options · ${esc(l.sku.name)}</h2>
+        <div class="legend" style="margin:0"><span><i class="area" style="background:var(--s1)"></i>Freight + fees</span><span><i class="area" style="background:var(--s3)"></i>Capital in transit</span><span><i class="area" style="background:var(--under)"></i>Lost sales before arrival</span></div></div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Option</th><th>Units by leg</th><th class="n">Freight</th><th class="n">Capital</th><th class="n">Lost sales</th><th class="n">Total</th><th>Cost breakdown</th></tr></thead>
+        <tbody>${opts.map((o, i) => `<tr class="${i === 0 ? "best" : ""}"><td>${esc(o.label)}</td><td class="mono">${o.legs.map((g) => `${fmtN(g.units)} × ${esc(g.mode)} (${g.leadDays}d)`).join("<br>")}</td><td class="n">${fmtU(o.freight)}</td><td class="n">${fmtU(o.capital)}</td><td class="n">${fmtU(o.stockout)}</td><td class="n"><strong>${fmtU(o.total)}</strong></td><td>${bar(o)}</td></tr>`).join("")}</tbody>
+      </table></div>
+      <p class="note">Split options send just enough units on the fast leg to cover demand from when stock runs out (or the fast leg lands) until the slow leg arrives, plus a 15% buffer. Capital cost uses ${pct(state.settings.capitalRate)} a year on landed cost while goods are at sea or in the air.</p>
+    </div>`;
+  }
+  document.addEventListener("pointerover", (e) => {
+    const s = e.target.closest("[data-tip]"), tip = $("barTip");
+    if (!s) { tip.hidden = true; return; }
+    tip.innerHTML = `<div class="r"><span>${esc(s.dataset.tip)}</span></div>`;
+    const r = s.getBoundingClientRect();
+    tip.style.position = "fixed";
+    tip.style.left = Math.max(8, Math.min(window.innerWidth - 220, r.left)) + "px";
+    tip.style.top = (r.top - 40) + "px";
+    tip.hidden = false;
+  });
+
+  function dataView() {
+    const st = state.settings;
+    const skuRows = state.skus.map((s, i) => `<tr>
+      <td><input class="in name" data-k="skus.${i}.name" value="${esc(s.name)}" aria-label="Product name"></td>
+      ${["price", "unitCost", "salvage", "holdingPerWeek", "onHand", "onOrder"].map((k) => `<td><input class="in" type="number" min="0" step="any" data-k="skus.${i}.${k}" value="${s[k]}" aria-label="${k}"></td>`).join("")}
+      <td class="n muted">${s.sales.length}</td></tr>`).join("");
+    const chRows = state.channels.map((c, i) => `<tr>
+      <td><input class="in name" data-k="channels.${i}.name" value="${esc(c.name)}" aria-label="Channel name"></td>
+      <td><input class="in" type="number" min="0" step="any" data-k="channels.${i}.currentSpend" value="${c.currentSpend}" aria-label="Weekly spend"></td>
+      <td class="n muted">${(c.history || []).length}</td>
+      <td><button class="btn ghost small" type="button" data-del="channels.${i}">Remove</button></td></tr>`).join("");
+    const modeRows = state.modes.map((m, i) => `<tr>
+      <td><input class="in name" data-k="modes.${i}.name" value="${esc(m.name)}" aria-label="Mode name"></td>
+      ${["leadDays", "costPerUnit", "fixedCost"].map((k) => `<td><input class="in" type="number" min="0" step="any" data-k="modes.${i}.${k}" value="${m[k]}" aria-label="${k}"></td>`).join("")}
+      <td><button class="btn ghost small" type="button" data-del="modes.${i}">Remove</button></td></tr>`).join("");
+    return `<div class="panel">
+      <div class="panel-head"><h2>Store</h2><button class="btn ghost small" type="button" id="loadSample">Load sample store</button></div>
+      <div class="form-row">
+        <label class="field" for="storeIn">Store name<input class="in" id="storeIn" data-k="storeName" value="${esc(state.storeName)}"></label>
+        <label class="field" for="capIn">Cost of capital (% a year)<input class="in mono" id="capIn" type="number" min="0" step="0.5" value="${(st.capitalRate * 100).toFixed(1)}"></label>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="panel drop">
+        <h2>Import weekly sales</h2>
+        <p class="muted" style="font-size:.88rem">CSV with a header row: a week or date column, a product column and a units column. One row per product per week. Shopify: Analytics → Reports → Sales by product, grouped by week.</p>
+        <code>week,sku,units
+2026-09-07,Hydra Serum 50ml,412
+2026-09-07,SPF 50 Fluid,188</code>
+        <input type="file" id="salesFile" accept=".csv,text/csv">
+        <p class="msg" id="salesMsg" hidden></p>
+      </div>
+      <div class="panel drop">
+        <h2>Import ad results</h2>
+        <p class="muted" style="font-size:.88rem">CSV with week, channel, spend and units (or conversions) columns. 8+ weeks per channel lets us fit its response curve; fewer and we assume an elasticity of 0.6.</p>
+        <code>week,channel,spend,units
+2026-09-07,Google Ads,1180,138</code>
+        <input type="file" id="adsFile" accept=".csv,text/csv">
+        <p class="msg" id="adsMsg" hidden></p>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>Products</h2><p class="muted">Prices and costs per unit, in dollars. Storage is per unit per week.</p></div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Product</th><th>Price</th><th>Landed cost</th><th>Clearance price</th><th>Storage/wk</th><th>On hand</th><th>On order</th><th class="n">Weeks of sales</th></tr></thead>
+        <tbody>${skuRows}</tbody></table></div>
+    </div>
+    <div style="display:grid;gap:20px">
+      <div class="panel">
+        <div class="panel-head"><h2>Ad channels</h2><button class="btn ghost small" type="button" data-add="channels">Add channel</button></div>
+        <div class="tbl-wrap"><table><thead><tr><th>Channel</th><th>Spend/wk today</th><th class="n">Weeks of results</th><th></th></tr></thead><tbody>${chRows}</tbody></table></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Freight modes</h2><button class="btn ghost small" type="button" data-add="modes">Add mode</button></div>
+        <div class="tbl-wrap"><table><thead><tr><th>Mode</th><th>Door-to-door days</th><th>$/unit</th><th>Fee per booking</th><th></th></tr></thead><tbody>${modeRows}</tbody></table></div>
+      </div>
+    </div>`;
+  }
+  function dataBind() {
+    const v = $("view");
+    v.addEventListener("change", onDataInput);
+    $("capIn").addEventListener("change", () => { state.settings.capitalRate = Math.max(0, +$("capIn").value || 0) / 100; changed(false); });
+    $("loadSample").addEventListener("click", () => { const keep = state.settings.horizon; state = E.sampleState(); state.settings.horizon = keep; sel = 0; changed(true); });
+    $("salesFile").addEventListener("change", (e) => readFile(e.target.files[0], importSales, "salesMsg"));
+    $("adsFile").addEventListener("change", (e) => readFile(e.target.files[0], importAds, "adsMsg"));
+  }
+  function onDataInput(e) {
+    const k = e.target.dataset && e.target.dataset.k;
+    if (!k) return;
+    const path = k.split(".");
+    let o = state;
+    for (let i = 0; i < path.length - 1; i++) o = o[path[i]];
+    const last = path[path.length - 1];
+    o[last] = e.target.type === "number" ? Math.max(0, +e.target.value || 0) : e.target.value.slice(0, 80);
+    changed(false);
+  }
+  document.addEventListener("click", (e) => {
+    const del = e.target.closest("[data-del]"), add = e.target.closest("[data-add]");
+    if (del) {
+      const [list, i] = del.dataset.del.split(".");
+      if (state[list].length <= 1) return;
+      state[list].splice(+i, 1); changed(true);
+    } else if (add) {
+      if (add.dataset.add === "channels") state.channels.push({ name: "New channel", currentSpend: 300, history: [] });
+      else state.modes.push({ name: "New mode", leadDays: 14, costPerUnit: 1, fixedCost: 200 });
+      changed(true);
+    }
+  });
+  function readFile(file, fn, msgId) {
+    if (!file) return;
+    const r = new FileReader();
+    r.onload = () => {
+      const m = $(msgId);
+      try { const text = fn(String(r.result)); changed(true); const m2 = $(msgId); m2.textContent = text; m2.className = "msg ok"; m2.hidden = false; }
+      catch (err) { m.textContent = err.message; m.className = "msg err"; m.hidden = false; }
+    };
+    r.readAsText(file);
+  }
+  function importSales(text) {
+    const rows = E.parseSalesCsv(text);
+    if (rows.some((r) => r.sales.length < 8)) throw new Error("Each product needs at least 8 weeks of sales.");
+    const old = new Map(state.skus.map((s) => [s.name, s]));
+    state.skus = rows.map((r, i) => {
+      const prev = old.get(r.name) || {};
+      return { id: "sku" + i + "-" + r.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 24), name: r.name, price: prev.price ?? 30, unitCost: prev.unitCost ?? 10, salvage: prev.salvage ?? 4, holdingPerWeek: prev.holdingPerWeek ?? 0.15, onHand: prev.onHand ?? 0, onOrder: prev.onOrder ?? 0, sales: r.sales };
+    });
+    state.source = "user"; sel = 0;
+    return `Imported ${rows.length} product${rows.length > 1 ? "s" : ""}, ${rows[0].sales.length} weeks each. Set prices, costs and stock below.`;
+  }
+  function importAds(text) {
+    const lines = text.trim().split(/\r?\n/).map((r) => r.split(",").map((c) => c.trim().replace(/^"|"$/g, "")));
+    const head = lines[0].map((h) => h.toLowerCase());
+    const iw = head.findIndex((h) => /week|date/.test(h)), ic = head.findIndex((h) => /channel|source|platform/.test(h)), is = head.findIndex((h) => /spend|cost/.test(h)), iu = head.findIndex((h) => /units|conversions|purchases|orders/.test(h));
+    if ([iw, ic, is, iu].some((x) => x < 0)) throw new Error("Add a header row with week, channel, spend and units columns.");
+    const by = new Map();
+    lines.slice(1).forEach((r) => {
+      if (!r[ic]) return;
+      if (!by.has(r[ic])) by.set(r[ic], []);
+      by.get(r[ic]).push({ week: r[iw], spend: +r[is] || 0, units: +r[iu] || 0 });
+    });
+    if (!by.size) throw new Error("No data rows found.");
+    state.channels = [...by.entries()].map(([name, h]) => {
+      h.sort((a, b) => a.week.localeCompare(b.week));
+      return { name, currentSpend: h[h.length - 1].spend, history: h.map(({ spend, units }) => ({ spend, units })) };
+    });
+    state.source = "user";
+    return `Imported ${by.size} channel${by.size > 1 ? "s" : ""}. Today's spend is set to each channel's latest week.`;
+  }
+
+  /* ---------- rendering ---------- */
+  function renderChrome() {
+    $("viewTitle").textContent = VIEWS[view];
+    $("storeName").textContent = state.storeName;
+    const chip = $("sourceChip");
+    chip.textContent = state.source === "sample" ? "Sample data" : "Your data";
+    chip.className = "chip" + (state.source === "sample" ? " sample" : "");
+    $("horizon").value = String(state.settings.horizon);
+    document.querySelectorAll("#nav a").forEach((a) => a.setAttribute("aria-current", a.dataset.view === view ? "page" : "false"));
+    if (plan) {
+      const st = statuses();
+      $("dot-demand").className = "dot " + st.acc[0].replace("info", "none");
+      $("dot-inventory").className = "dot " + st.stock[0];
+      $("dot-marketing").className = "dot " + st.mk[0];
+      $("dot-shipping").className = "dot " + st.ship[0];
+      $("cycleNote").textContent = `${state.skus.length} products · ${state.channels.length} ad channels · ${state.modes.length} freight modes`;
+    }
+  }
+  function renderView() {
+    renderChrome();
+    if (!plan && view !== "data") return;
+    if (sel >= state.skus.length) sel = 0;
+    const v = $("view");
+    const html = { overview, demand, inventory, marketing, shipping, data: dataView }[view]();
+    v.innerHTML = `<div style="display:grid;gap:20px">${html}</div>`;
+    v.replaceWith(v.cloneNode(true)); // drop old listeners bound to #view
+    ({ demand: demandCharts, inventory: inventoryCharts, marketing: marketingCharts, data: dataBind }[view] || (() => {}))();
+  }
+  let timer = null;
+  function changed(rerender) {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      const ok = recompute();
+      if (rerender || view !== "data") renderView(); else renderChrome();
+      if (ok) scheduleSave();
+    }, rerender ? 0 : 250);
+  }
+  $("horizon").addEventListener("change", () => { state.settings.horizon = +$("horizon").value; changed(true); });
+  function route() {
+    const h = location.hash.replace("#", "");
+    view = VIEWS[h] ? h : "overview";
+    renderView();
+    window.scrollTo(0, 0);
+  }
+  window.addEventListener("hashchange", route);
+
+  /* ---------- persistence: per-user plan in the artifact database, localStorage fallback ---------- */
+  let db = null, uid = null, saving = false, pending = false, saveTimer = null;
+  const LS = "equilibra.plan.v1";
+  const setStatus = (t) => { $("saveStatus").textContent = t; };
+  function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(save, 1200); }
+  async function save() {
+    if (saving) { pending = true; return; }
+    saving = true;
+    const body = JSON.stringify(state);
+    try {
+      if (db && uid) { await db.collection("data/users/" + uid).doc("plan").set({ state: body, savedAt: new Date().toISOString() }); setStatus("Saved to your account"); }
+      else { try { localStorage.setItem(LS, body); setStatus("Saved in this browser"); } catch (e) { setStatus("Not saved: sign in to keep your plan"); } }
+    } catch (e) {
+      setStatus(e && e.code === "not_granted" ? "View-only: changes aren't saved" : "Couldn't save. Your next change will retry.");
+    } finally {
+      saving = false;
+      if (pending) { pending = false; scheduleSave(); }
+    }
+  }
+  function adopt(json) {
+    try {
+      const s = JSON.parse(json);
+      if (s && Array.isArray(s.skus) && s.skus.length && Array.isArray(s.channels) && Array.isArray(s.modes) && s.settings) { state = s; return true; }
+    } catch (e) { /* ignore malformed */ }
+    return false;
+  }
+  async function connect() {
+    try { const ls = localStorage.getItem(LS); if (ls && adopt(ls)) { recompute(); renderView(); setStatus("Loaded from this browser"); } } catch (e) { /* storage blocked */ }
+    if (!window.claude || !window.claude.use) return;
+    try {
+      const [d, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
+      if (!d || !user) return;
+      uid = await user.id();
+      db = d;
+      const snap = await db.collection("data/users/" + uid).doc("plan").get();
+      if (snap.exists) {
+        const data = snap.data();
+        if (data && adopt(data.state)) { recompute(); renderView(); setStatus("Loaded your saved plan"); }
+      } else setStatus("Edits save to your account");
+    } catch (e) { /* run without persistence */ }
+  }
+
+  recompute();
+  route();
+  connect();
+})();
+</script>
